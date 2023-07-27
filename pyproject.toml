@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "LLM news bot"
+version = "0.1.0"
+description = "Bot based on LangChain LLMs ChatGPT and Fastapi"
+authors = ["Vadim Bobenko (vebester@gmail.com)"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
+fastapi = "^0.99.0"
+uvicorn = "0.22.0"
+pydantic = "^1.3"
+requests = "^2.22.0"
+loguru = "^0.7.0"
+joblib = "^1.2.0"
+scikit-learn = "^1.2.0"
+streamlit = "^1.24.1"
+streamlit-chat = "^0.1.1"
+python-dotenv = "^1.0.0"
+openai = "^0.27.8"
+langchain = "^0.0.244"
+tiktoken = "^0.4.0"
+markdownify = "^0.11.6"
+chromadb = "^0.4.3"
+sentence-transformers = "^2.2.2"
+html2text = "^2020.1.16"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2"
+black = {version = "^19.10b0", allow-prereleases = true}
+autopep8 = "^2.0.0"
+ipdb = "^0.13.0"
+pylint = "^2.15.8"
+flake8 = "^6.0.0"
+
+[tool.poetry.group.aws]
+optional = true
+
+[tool.poetry.group.aws.dependencies]
+mangum = "^0.17.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py39', 'py310', 'py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.toml
+  |\.sh
+  |\.git
+  |\.ini
+  |Dockerfile
+  |Jenkinfile
+)/
+'''
