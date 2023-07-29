@@ -3,6 +3,8 @@ from dotenv import dotenv_values
 import streamlit as st
 from streamlit_chat import message
 from langchain.docstore.document import Document
+from langchain import PromptTemplate
+from llm_langchain.llm_langchain import LLMLangChain
 from llm_langchain.llm_langchain_chat import LLMLangChainChat
 from llm_langchain.prompt_builder.prompt_builder import PromptBuilder
 from llm_langchain.docs_store import DocsStore
@@ -36,22 +38,26 @@ MODEL_NAMES = ("gpt-3.5-turbo", "gpt-4")
 
 config["model_name"] = MODEL_NAMES[0]
 
-llm_chat = LLMLangChainChat(config)
+llm_langchain = LLMLangChainChat(config)
 
 docs_store = ChromaDocsStore(config)
 
+# llm_langchain.splitter = docs_store.splitter
+
+llm_langchain.docs_store = docs_store
+
+pb = PromptBuilder()
+
 # Вы являетесь опытным комментатором тем для обсуждения в Twitter, Instagram или любых других сообществах.
-system_template = "You are an experienced discussion topics commenter on Twitter, Instagram or any other communities."
+# system_template = "You are an experienced editor and article writer."
+# pb.system_template = system_template
 
 # initialize message history
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        # llm_chat.system_message(content=system_template)
-    ]
+    st.session_state.messages = []
 
 st.title("ChatGPT")
 # st.subheader("AI Tutor:")
-
 
 SENTIMENT = {
     "negative",
@@ -73,7 +79,7 @@ CATEGORIES = (
     "Marijuana Legalization",
     "Capital Punishment",
     "Marriage Equality",
-    "vector",
+    #    "vector",
     "Immigration Reform",
     "Trump Presidency",
     "Opioid Crisis",
@@ -126,14 +132,14 @@ text_category: str = ""
 output_language: str = "English"
 
 OPENAI_COMPLETION_OPTIONS = {
-    "temperature": 0.7,
+    "temperature": 0,
     "max_tokens": 1000,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
 }
 
-st.header("Topic Generator 🤖")
+st.header("Text Summarizer 🤖")
 
 # sidebar with user input
 with st.sidebar:
@@ -144,13 +150,16 @@ with st.sidebar:
 
     if model_name:
         config["model_name"] = model_name
-        llm_chat = LLMLangChainChat(config)
+        llm_langchain = LLMLangChainChat(config)
 
     max_sentences = st.selectbox(
         "Max num of sentences in summary:", ('1', '2', '3', '4', '5'), index=4)
 
     max_chars = st.number_input(
         "Max num of summary chars:", min_value=1, max_value=300, value=300)
+
+    max_categories = st.selectbox(
+        "Max num of categories:", ('1', '2', '3', '4', '5'), index=4)
 
     output_language = st.selectbox(
         "Output Language:", ('English', 'Russian'))
@@ -180,109 +189,220 @@ if st.button("Get from url"):
             input_data = docs[0].page_content
 
 user_input = st.text_area(
-    "Text to summarize: ", value=input_data, key="user_input")
+    "Text: ", value=input_data, key="user_input")
 
-user_summary_input = st.text_area(
-    "Summary: ", value="", key="user_summary_input")
+# user_summary_input = st.text_area(
+#    "Summary: ", value="", key="user_summary_input")
 
 
-text_category = st.selectbox(
-    "Text category: ", CATEGORIES, index=0, key="user_category_list")
-# text_category = st.text_input("Text category: ", key="user_category_input")
+# text_category = st.selectbox(
+#    "Text category: ", CATEGORIES, index=0, key="user_category_list")
 
-if st.button("Generate"):
+if st.button("Summarize"):
     # handle user input
+    user_input.strip()
     if user_input or text_category != "Select":
         if text_category == "Select":
             text_category = ""
 
-        pb = PromptBuilder(
+        llm = llm_langchain.chat_open_ai(temperature=0)
+
+        num_tokens = llm.get_num_tokens(user_input)
+        print(f"Text has {num_tokens} tokens")
+
+        pb.set_vars(
             text=user_input, text_category=text_category,
             max_sentences=int(max_sentences), max_chars=max_chars,
             output_language=output_language)
         # input_language="Russian", output_language="Russian")
 
-        st.session_state.messages = []
+        st.session_state.messages = ["Summarize"]
 
         category_tag: str = ""
 
-        if user_input:
-            if text_category != "":
-                category_tag = f"\n\n#{text_category}"
-            st.session_state.messages.append(user_input + category_tag)
-        else:
-            category_tag = f"#{text_category}"
-            st.session_state.messages.append(category_tag)
-
-        # llm_chat.human_message(content=user_input))
-
         with st.spinner("Thinking..."):
-            system_message_prompt = llm_chat.system_message_prompt_templay(
-                system_template)
 
             human_template = pb.get_human_template()
 
             if debug:
                 st.write(human_template)
 
-            human_message_prompt = llm_chat.human_message_prompt_templay(
-                human_template)
+            human_prompt = PromptTemplate(
+                template=human_template, input_variables=["text"])
+            # "max_sentences",
+            # "max_chars"])
 
-            chat_prompt = llm_chat.chat_prompt_templay(
-                system_message_prompt, human_message_prompt)
+            # human_prompt = llm_langchain.prompt_from_template(
+            #    template=human_template,
+            #    input_variables=["text", "max_sentences", "max_chars"])
 
-            chat = llm_chat.chat_open_ai(temperature=0.8)
+            # if debug:
+            #    st.write(human_prompt)
 
-            chain = llm_chat.chain(prompt=chat_prompt)
+            # num_human_tokens = llm.get_num_tokens(human_prompt)
+            # print(f"human prompt has {num_human_tokens} tokens")
 
-            output = chain.run(
-                text=user_input, text_category=text_category,
-                max_sentences=int(max_sentences), max_chars=max_chars,
-                output_language=output_language)
+            # st.session_state.messages.append(llm_langchain.human_message(content=user_input))
+
+            # human_message_prompt = llm_langchain.human_message(human_template)
+
+            # texts = llm_langchain.docs_store.splitter.split_text(user_input)
+            # docs = [Document(page_content=t) for t in texts[:3]]
+
+            # Create Document objects for the user_input
+            docs = docs_store.splitter.create_documents([user_input])
+
+            num_documents = len(docs)
+            print(f"Docs split up into {num_documents} documents")
+
+            # summary_prompt = human_prompt.format(
+            #    text=user_input,
+            # text_category=text_category,
+            #    max_sentences=int(max_sentences), max_chars=max_chars
+            # )
+
+            chain = llm_langchain.load_summarize_chain(prompt=human_prompt)
+
+            # chain = llm.chain(prompt=chat_prompt)
+            output = chain.run(docs)
+
+            # output = chain.run(docs,
+            #                   text=user_input, text_category=text_category,
+            #                   max_sentences=int(max_sentences), max_chars=max_chars,
+            #                   output_language=output_language)
             # input_language="Russian", output_language=output_language)
 
-            # st.write(output)
+            st.write(output)
             # st.write(type(output))
-            comments: list = []
 
-            response: Any = json.loads(output)
-            # print(response, type(response))
-            if type(response) == list:
-                comments = response
-            else:
-                if response["comments"]:
-                    comments = response["comments"]
-                elif response["Comments"]:
-                    comments = response["Comments"]
-                else:
-                    print(response, type(response))
+            if type(output) == str:
+                print(output)
+            # user_summary_input = output.strip()
 
-            # print(comments, type(comments), type(response))
-
-            for obj in comments:
-                comment: str = obj["comment"]
-                sentiment: str = obj["label"]
-                out: str = f"{comment}\n\n{sentiment}"
-                st.session_state.messages.append(out)
-
-            # st.session_state.messages.append(output)
+            st.session_state.messages.append(output)
 
             # for i in range(1, n_comments + 1):
             #    st.session_state.messages.append(
             #        str(i))
 
-                # llm_chat.ai_message(content=response.content))
     else:
-        st.write('Enter the text or select the category.')
+        st.write('Enter the text.')
 
+if st.button("Classify"):
+    # handle user input
+    user_input.strip()
+    if user_input or text_category != "Select":
+        if text_category == "Select":
+            text_category = ""
+
+        llm = llm_langchain.chat_open_ai(temperature=0)
+
+        # num_tokens = llm.get_num_tokens(user_input)
+        # print(f"Text has {num_tokens} tokens")
+
+        pb.set_vars(
+            text=user_input, text_category=text_category,
+            max_sentences=int(max_sentences), max_chars=max_chars,
+            max_categories=int(max_categories),
+            categories=list(CATEGORIES[1:]),
+            output_language=output_language)
+        # input_language="Russian", output_language="Russian")
+
+        st.session_state.messages = ["Classify"]
+
+        category_tag: str = ""
+
+        with st.spinner("Thinking..."):
+
+            system_message_prompt = llm_langchain.system_message_prompt_templay(
+                pb.get_system_classification_template())
+
+            human_template = pb.get_human_classification_template()
+
+            if debug:
+                st.write(human_template)
+
+            human_message_prompt = llm_langchain.human_message_prompt_templay(
+                human_template)
+
+            chat_prompt = llm_langchain.chat_prompt_templay(
+                system_message_prompt, human_message_prompt)
+
+            # texts = llm_langchain.docs_store.splitter.split_text(user_input)
+            # docs = [Document(page_content=t) for t in texts[:3]]
+
+            # Create Document objects for the user_input
+            # docs = docs_store.splitter.create_documents([user_input])
+
+            # num_documents = len(docs)
+            # print(f"Docs split up into {num_documents} documents")
+
+            chain = llm_langchain.chain(prompt=chat_prompt)
+
+            output = chain.run(
+                text=user_input, text_category=text_category,
+                max_categories=max_categories,
+                categories=list(CATEGORIES[1:]),
+                max_sentences=int(max_sentences), max_chars=max_chars,
+                output_language=output_language)
+
+            st.write(output)
+            # st.write(type(output))
+
+            if type(output) == str:
+                print(output)
+
+            output = output.strip()
+
+            format_json = False
+
+            categories: list = []
+
+            if type(output) == list:
+                categories = output
+            elif type(output) == str and output[0] != "{":
+                categories = output.strip("[]").split(",")
+                # print("categories=", format_json, categories, type(categories))
+            else:
+                format_json = True
+                response: Any = json.loads(output)
+                print(response, type(response))
+                if "categories" in response:
+                    categories = response["categories"]
+                    # print("categories=", format_json, categories, type(categories))
+                else:
+                    print(response, type(response))
+
+                # if type(response) == dict:
+                #    categories = response.labels()
+                # elif type(response) == list:
+                #    categories = response
+                # else:
+                #    print(response, type(response))
+
+            # print(comments, type(comments), type(response))
+            out: str = ""
+            for i, category in enumerate(categories):
+                if not format_json:
+                    category = category.strip()[1:-1]
+                if i == 0:
+                    category_tag = f"#{category}"
+                else:
+                    category_tag = f", #{category}"
+                out += category_tag
+
+            st.session_state.messages.append(out)
+
+    else:
+        st.write('Enter the text.')
 
 # handle user input
 # if user_input:
-#   st.session_state.messages.append(llm_chat.human_message(content=user_input))
+#   st.session_state.messages.append(llm.human_message(content=user_input))
 #   with st.spinner("Generating..."):
-#       response = llm_chat.chat_open_ai(st.session_state.messages)
+#       response = llm.chat_open_ai(st.session_state.messages)
 #   st.session_state.messages.append(
-#       llm_chat.ai_message(content=response.content))
+#       llm.ai_message(content=response.content))
 
 # display message history
 messages = st.session_state.get('messages', [])

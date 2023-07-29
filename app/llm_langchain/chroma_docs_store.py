@@ -32,8 +32,8 @@ class ChromaDocsStore(DocsStore):
         self.n_ctx = int(config['MODEL_N_CTX'])
         self.n_gpu_layers = int(config['MODEL_N_GPU_LAYERS'])
 
-        self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+        # self.splitter = RecursiveCharacterTextSplitter(
+        #    chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
 
         # self.embeddings = HuggingFaceEmbeddings(
         #    model_name=self.embeddings_model_name)

@@ -27,6 +27,7 @@ from langchain.document_loaders import AsyncHtmlLoader
 # nest_asyncio.apply()
 
 from langchain.docstore.document import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 # from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.document_transformers import Html2TextTransformer
@@ -106,8 +107,11 @@ class DocsStore:
         self.retriever = None
         self.qa = None
 
-        print(f"documents from dir: {self.source_directory}")
-        print(f"db dir: {self.persist_directory}")
+        self.splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+
+        # print(f"documents from dir: {self.source_directory}")
+        # print(f"db dir: {self.persist_directory}")
         return
 
     @staticmethod

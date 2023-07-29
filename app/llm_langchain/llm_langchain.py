@@ -1,16 +1,18 @@
 from enum import Enum
 
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union, Any
+from typing import Dict, List, Mapping, Optional, Tuple, Type, Union, Any
 from pydantic import BaseModel, validate_arguments
 
 # import os
 from langchain.llms import OpenAI
 from langchain import LLMChain
 from langchain import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import ConversationChain
-from langchain.chains.conversation.memory import ConversationBufferWindowMemory
+
+from langchain.chains.summarize import load_summarize_chain
 from langchain.embeddings import OpenAIEmbeddings
+
+from .docs_store import DocsStore
+from .utils import *
 
 from langchain.schema import (
     SystemMessage,
@@ -34,10 +36,6 @@ class Conversation(BaseModel):
     conversation: List[Message]
 
 
-
-from .utils import *
-
-
 class LLMLangChain:
     """
 
@@ -56,10 +54,16 @@ class LLMLangChain:
         #        f"OPENAI_API_KEY is set: {self.openai_api_key[0:3]}...{self.openai_api_key[-4:]}")
 
         self.llm = None
+        self.embeddings = None
+        self.splitter = None
+
+        self.docs_store = None
+        self.retriever = None
+        self.qa = None
 
         return
 
-    def open_ai(self, **kwargs) -> Optional[OpenAI]: # OpenAI | None:
+    def open_ai(self, **kwargs) -> Optional[OpenAI]:  # OpenAI | None:
         if self.openai_api_key is None or self.openai_api_key == "":
             print("OPENAI_API_KEY is not set")
             return None
@@ -74,6 +78,9 @@ class LLMLangChain:
 
     def chain(self, prompt: str) -> LLMChain:
         return LLMChain(llm=self.llm, prompt=prompt)
+
+    def load_summarize_chain(self, prompt: str, chain_type="stuff") -> str:
+        return load_summarize_chain(llm=self.llm, prompt=prompt, chain_type=chain_type)
 
     # staticmethod
     def system_message(self, content: str = "You are a helpful assistant.") -> Any:
@@ -90,13 +97,14 @@ class LLMLangChain:
         # return content
         return AIMessage(content=content)
 
-    def make_prompt_from_template(template: str,
-                                  input_variables: list = [],
-                                  translate: bool = False) -> str:
+    def prompt_from_template(template: str,
+                             input_variables: list = [],
+                             translate: bool = False) -> str:
 
         prompt = PromptTemplate(
-            input_variables=input_variables,
-            template=template)
+            template=template,
+            input_variables=input_variables
+            )
         if translate:
             pass
             # translated_text = yandex_translate('en',

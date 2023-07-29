@@ -1,4 +1,4 @@
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union, Any
+from typing import Dict, List, Optional, Tuple, Type, Union, Any
 from pydantic import BaseModel, validate_arguments
 
 from langchain.chat_models import ChatOpenAI
@@ -14,6 +14,7 @@ from langchain import LLMChain
 from langchain import PromptTemplate
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
+from langchain.memory import ConversationBufferMemory
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
 from langchain.embeddings import OpenAIEmbeddings
 
@@ -50,6 +51,10 @@ class LLMLangChainChat(LLMLangChain):
             openai_api_key=self.openai_api_key,
             **kwargs)
         return self.llm
+
+    def conversation_chain(self) -> LLMChain:
+        return ConversationChain(llm=self.llm,
+                                 memory=ConversationBufferMemory())
 
     def system_message_prompt_templay(self, template: str) -> str:
 

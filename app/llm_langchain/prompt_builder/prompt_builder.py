@@ -1,5 +1,5 @@
-from typing import Dict, List, Mapping, Optional, Tuple, Type, Union, Any
-from pydantic import BaseModel, validate_arguments
+from typing import Dict, List, Optional, Tuple, Type, Union, Any
+# from pydantic import BaseModel, validate_arguments
 
 
 class PromptBuilder:
@@ -8,92 +8,98 @@ class PromptBuilder:
     """
 
     def __init__(self, text: str = "", text_category: str = "",
-                 n_negative: int = 0, n_positive: int = 0,
                  max_sentences: int = 5, max_chars: int = 300,
-                 max_arguments: int = 3,
+                 max_categories: int = 5,
+                 categories: List[str] = [],
                  input_language: str = "English", output_language: str = "English",
                  **kwargs) -> None:
+
+        self.system_template = """
+            You are an experienced editor and article writer.
+            """
+        self.system_classification_template = """
+            You are a highly intelligent and accurate multi-label classification system.
+            """
+
         self.set_vars(text=text, text_category=text_category,
-                      n_negative=n_negative, n_positive=n_positive,
                       max_sentences=int(max_sentences), max_chars=max_chars,
-                      max_arguments=int(max_arguments),
+                      max_categories=max_categories,
+                      categories=categories,
+                      input_language=input_language,
                       output_language=output_language,
                       **kwargs)
 
     def set_vars(self, text: str = "", text_category: str = "",
-                 n_negative: int = 0, n_positive: int = 0,
                  max_sentences: int = 5, max_chars: int = 300,
-                 max_arguments: int = 3,
+                 max_categories: int = 5,
+                 categories: List[str] = [],
                  input_language: str = "English", output_language: str = "English",
                  **kwargs) -> None:
         self.text = text
         self.text_category: str = text_category
-        self.n_negative: int = n_negative
-        self.n_positive: int = n_positive
-        self.n_comments: int = n_negative + n_positive
-
         self.max_sentences: int = max_sentences
         self.max_chars: int = max_chars
-        self.max_arguments: int = max_arguments
-
+        self.max_categories = max_categories
+        self.categories = categories
         self.input_language: int = input_language
         self.output_language: int = output_language
+
         return
 
+    def get_system_template(self) -> str:
+        return self.system_template
+
     def get_human_template(self) -> str:
-        human_template: str = ""
-        if self.text != "":
-            human_template = 'Based on the topic text delimited by triple backticks ```{text}```'
-            if self.text_category != "":
-                human_template += ' taking in account topic category "{text_category}"'
-        else:
-            human_template = 'Based on the topic category delimited by triple backticks ```{text_category}```'
-        human_template += ' generate'
-        if self.n_negative:
-            human_template += ' {n_negative} negative'
-            if self.n_positive:
-                human_template += ' and {n_positive} positive'
-        elif self.n_positive:
-            human_template += ' {n_positive} positive'
-        human_template += ' comment'
-        if self.n_comments > 1:
-            human_template += 's'
+        template: str = ""
 
-        human_template += ' in an informal, conversational style.'
+        template += self.system_template + "\n"
 
-        # Каждый сгенерированный комментарий может состоять от 1 до {max_sentences} предложений и должен иметь длину не более {max_chars} символов.
-        human_template += '\nEach comment can consist randomly from 1 to {max_sentences} sentences and must have no more than {max_chars} chars length.'
-
-        
-        if self.n_negative and self.max_arguments:
-            # Каждый отрицательный комментарий может содержать случайным образом от 1 до {max_arguments} аргументов против содержания темы.
-            human_template += '\nEach negative comment can contain randomly from 1 to {max_arguments} arguments against topic content.'
-        if self.n_positive and self.max_arguments:
-            # Каждый положительный комментарий может содержать случайным образом от 1 до {max_arguments} аргументов для содержания темы.
-            human_template += '\nEach positive comment can contain randomly from 1 to {max_arguments} arguments for topic content.'
-
-        
-        if self.n_negative:
-            # Каждый отрицательный комментарий может содержать случайным образом от 1 до {max_arguments} аргументов против содержания темы.
-            human_template += '\nEach negative comment mark with label "negative".'
-        if self.n_positive:
-            # Каждый положительный комментарий может содержать случайным образом от 1 до {max_arguments} аргументов для содержания темы.
-            human_template += '\nEach positive comment mark with label "positive".'
-
-        # human_template += '\nEach generated comment mark with label "negative" or "positive".'
+        template += """
+        Write a concise summary of the following text delimited by triple backquotes, which covers the key points of the text.
+        ```{text}```
+        SUMMARY:
+        """
+        # Саммари может состоять до {max_sentences} предложений и должен иметь длину не более {max_chars} символов.
+        # template += '\nThe summary can consist up to {max_sentences} sentences and must have no more than {max_chars} chars length.'
 
         # if self.input_language != self.output_language:
-            #human_template += '\nTranslate output from {input_language} to {output_language}.'
-            
-        if self.output_language != "English":
-            human_template += '\nTranslate output to {output_language}.'
+        #   template += '\nTranslate output from {input_language} to {output_language}.'
 
-        # Отформатируйте выходные данные в формате JSON в виде списка сгенерированных объектов комментариев со следующими ключами
-        human_template += """
-        Format the output as JSON with list of generated comment objects with the following keys:
-        label 
-        comment        
+        # if self.output_language != "English":
+        #    template += '\nTranslate output to {output_language}.'
+
+        # template += ' in an informal, conversational style.'
+
+        # template += """
+        #    ```{text}```
+        #    SUMMARY:
+        #    """
+
+        return template
+
+    def get_system_classification_template(self) -> str:
+        return self.system_classification_template
+
+    def get_human_classification_template(self) -> str:
+        template: str = ""
+
+        template += self.system_classification_template + "\n"
+
+        template += """
+        Classify the following text delimited by triple backquotes into {max_categories} most appropriate and use only from the values in given category list:
+        {categories}.
+        Write output into category list.
+        ```{text}```
+        OUTPUT:
         """
-        # % YOUR RESPONSE:
+        #  in JSON format
 
-        return human_template
+        # Записать выходные данные в список категорий
+        #template += """
+        #Classify the following text delimited by triple backquotes as one of the following appropriate Categories:
+        #{categories}
+        #```{text}```
+        #CATEGORIES:
+        #"""
+
+        return template
