@@ -152,17 +152,17 @@ with st.sidebar:
         config["model_name"] = model_name
         llm_langchain = LLMLangChainChat(config)
 
-    max_sentences = st.selectbox(
-        "Max num of sentences in summary:", ('1', '2', '3', '4', '5'), index=4)
+    # max_sentences = st.selectbox(
+    #    "Max num of sentences in summary:", ('1', '2', '3', '4', '5', '6', '7'), index=4)
 
-    max_chars = st.number_input(
-        "Max num of summary chars:", min_value=1, max_value=300, value=300)
+    # max_chars = st.number_input(
+    #    "Max num of summary chars:", min_value=1, max_value=300, value=300)
 
     max_categories = st.selectbox(
-        "Max num of categories:", ('1', '2', '3', '4', '5'), index=4)
+        "Max num of classification categories:", ('1', '2', '3', '4', '5'), index=4)
 
-    output_language = st.selectbox(
-        "Output Language:", ('English', 'Russian'))
+    # output_language = st.selectbox(
+    #    "Output Language:", ('English', 'Russian'))
 
     # def _send_data():
     #    st.session_state.counter += 1
@@ -178,15 +178,15 @@ with st.sidebar:
 
 input_data: str = ""
 
-url = st.text_input(
-    "Web Page Url: ", placeholder="https://", key="user_input_url")
+# url = st.text_input(
+#    "Web Page Url: ", placeholder="https://", key="user_input_url")
 
-if st.button("Get from url"):
-    if url:
+# if st.button("Get from url"):
+#    if url:
         # st.write("Getting webpage...")
-        docs: List[Document] = DocsStore.load_urls([url])
-        if len(docs) != 0:
-            input_data = docs[0].page_content
+#        docs: List[Document] = DocsStore.load_urls([url])
+#        if len(docs) != 0:
+#            input_data = docs[0].page_content
 
 user_input = st.text_area(
     "Text: ", value=input_data, key="user_input")
@@ -212,11 +212,12 @@ if st.button("Summarize"):
 
         pb.set_vars(
             text=user_input, text_category=text_category,
-            max_sentences=int(max_sentences), max_chars=max_chars,
+            # max_sentences=int(max_sentences),
+            # max_chars=max_chars,
             output_language=output_language)
         # input_language="Russian", output_language="Russian")
 
-        st.session_state.messages = ["Summarize"]
+        st.session_state.messages = ["Summarize" + " in " + model_name]
 
         category_tag: str = ""
 
@@ -272,11 +273,12 @@ if st.button("Summarize"):
             #                   output_language=output_language)
             # input_language="Russian", output_language=output_language)
 
-            st.write(output)
-            # st.write(type(output))
+            if debug:
+                st.write(output)
+                # st.write(type(output))
+                if type(output) == str:
+                    print(output)
 
-            if type(output) == str:
-                print(output)
             # user_summary_input = output.strip()
 
             st.session_state.messages.append(output)
@@ -295,20 +297,21 @@ if st.button("Classify"):
         if text_category == "Select":
             text_category = ""
 
-        llm = llm_langchain.chat_open_ai(temperature=0)
+        llm = llm_langchain.chat_open_ai(
+            temperature=0)  # **OPENAI_COMPLETION_OPTIONS
 
         # num_tokens = llm.get_num_tokens(user_input)
         # print(f"Text has {num_tokens} tokens")
 
         pb.set_vars(
             text=user_input, text_category=text_category,
-            max_sentences=int(max_sentences), max_chars=max_chars,
+            # max_sentences=int(max_sentences), max_chars=max_chars,
             max_categories=int(max_categories),
             categories=list(CATEGORIES[1:]),
             output_language=output_language)
         # input_language="Russian", output_language="Russian")
 
-        st.session_state.messages = ["Classify"]
+        st.session_state.messages = ["Classify" + " in " + model_name]
 
         category_tag: str = ""
 
@@ -343,14 +346,14 @@ if st.button("Classify"):
                 text=user_input, text_category=text_category,
                 max_categories=max_categories,
                 categories=list(CATEGORIES[1:]),
-                max_sentences=int(max_sentences), max_chars=max_chars,
+                # max_sentences=int(max_sentences), max_chars=max_chars,
                 output_language=output_language)
 
-            st.write(output)
-            # st.write(type(output))
-
-            if type(output) == str:
-                print(output)
+            if debug:
+                st.write(output)
+                # st.write(type(output))
+                if type(output) == str:
+                    print(output)
 
             output = output.strip()
 

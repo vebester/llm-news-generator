@@ -86,9 +86,11 @@ class PromptBuilder:
         template += self.system_classification_template + "\n"
 
         template += """
-        Classify the following text delimited by triple backquotes into {max_categories} most appropriate and use only from the values in given category list:
+        Classify the following text delimited by triple backquotes into {max_categories} most appropriate categories from the values in given category list:
         {categories}.
-        Write output into category list.
+        When analyzing do not use categories that not in given category list.
+        Write output into category list up to {max_categories} most relevant categories.
+        Do not include in output list categories that not in given category list and categories with zero rank.
         ```{text}```
         OUTPUT:
         """
@@ -103,3 +105,14 @@ class PromptBuilder:
         #"""
 
         return template
+
+
+rewriter_template: str = """""
+I'm going to give you some information before asking you to write an article. Do you understand?
+
+2.
+When it comes to writing content, two factors are crucial, "perplexity" and "burstiness." Perplexity measures the complexity of text. Separately, burstiness compares the variations of sentences. Humans tend to write with greater burstiness, for example, with some longer or complex sentences alongside shorter ones. AI sentences tend to be more uniform. Therefore, when writing the following content I am going to ask you to create, I need it to have a good amount of perplexity and burstiness. Do you understand?
+
+3.
+using the concepts written previously, rewrite this article with a high degree of perplexity and burstiness:
+"""
