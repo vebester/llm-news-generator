@@ -24,6 +24,7 @@ chromadb = "^0.4.3"
 sentence-transformers = "^2.2.2"
 html2text = "^2020.1.16"
 requests-html = "^0.10.0"
+pysqlite3-binary = "^0.5.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2"

@@ -8,7 +8,7 @@ from llm_langchain.llm_langchain import LLMLangChain
 from llm_langchain.llm_langchain_chat import LLMLangChainChat
 from llm_langchain.prompt_builder.prompt_builder import PromptBuilder
 from llm_langchain.docs_store import DocsStore
-from llm_langchain.chroma_docs_store import ChromaDocsStore
+# from llm_langchain.chroma_docs_store import ChromaDocsStore
 import json
 import logging
 
@@ -40,7 +40,8 @@ config["model_name"] = MODEL_NAMES[0]
 
 llm_langchain = LLMLangChainChat(config)
 
-docs_store = ChromaDocsStore(config)
+# docs_store = ChromaDocsStore(config)
+docs_store = DocsStore(config)
 
 # llm_langchain.splitter = docs_store.splitter
 
