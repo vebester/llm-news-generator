@@ -29,6 +29,12 @@ if not config:
     config["DEBUG"] = st.secrets["DEBUG"]
     # config["ENV_MODE"] = st.secrets["ENV_MODE"]
     config["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
+    config["PERSIST_DIRECTORY"] = st.secrets["PERSIST_DIRECTORY"]
+    config["SOURCE_DIRECTORY"] = st.secrets["SOURCE_DIRECTORY"]
+    config["EMBEDDINGS_MODEL_NAME"] = st.secrets["EMBEDDINGS_MODEL_NAME"]
+    config["CHUNK_SIZE"] = st.secrets["CHUNK_SIZE"]
+    config["CHUNK_OVERLAP"] = st.secrets["CHUNK_OVERLAP"]
+    # config[""] = st.secrets[""]
 # st.write(config)
 
 debug: bool = bool(config["DEBUG"])
