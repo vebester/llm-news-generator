@@ -4,9 +4,13 @@ import streamlit as st
 from streamlit_chat import message
 from langchain.docstore.document import Document
 from langchain import PromptTemplate
+
 from llm_langchain.llm_langchain import LLMLangChain
 from llm_langchain.llm_langchain_chat import LLMLangChainChat
 from llm_langchain.prompt_builder.prompt_builder import PromptBuilder
+from llm_langchain.prompt_builder.summary_prompt_builder import SummaryPromptBuilder
+from llm_langchain.prompt_builder.classification_prompt_builder import ClassificationPromptBuilder
+from llm_langchain.prompt_builder.rewriter_prompt_builder import RewriterPromptBuilder
 from llm_langchain.docs_store import DocsStore
 # from llm_langchain.chroma_docs_store import ChromaDocsStore
 import json
@@ -44,16 +48,15 @@ MODEL_NAMES = ("gpt-3.5-turbo", "gpt-4")
 
 config["model_name"] = MODEL_NAMES[0]
 
-llm_langchain = LLMLangChainChat(config)
+llm_chat = LLMLangChainChat(config)
 
 # docs_store = ChromaDocsStore(config)
 docs_store = DocsStore(config)
 
-# llm_langchain.splitter = docs_store.splitter
+# llm_chat.splitter = docs_store.splitter
 
-llm_langchain.docs_store = docs_store
+llm_chat.docs_store = docs_store
 
-pb = PromptBuilder()
 
 # Вы являетесь опытным комментатором тем для обсуждения в Twitter, Instagram или любых других сообществах.
 # system_template = "You are an experienced editor and article writer."
@@ -146,7 +149,7 @@ OPENAI_COMPLETION_OPTIONS = {
     "presence_penalty": 0
 }
 
-st.header("Text Summarizer 🤖")
+st.header("News Generator 🤖")
 
 # sidebar with user input
 with st.sidebar:
@@ -157,7 +160,7 @@ with st.sidebar:
 
     if model_name:
         config["model_name"] = model_name
-        llm_langchain = LLMLangChainChat(config)
+        llm_chat = LLMLangChainChat(config)
 
     # max_sentences = st.selectbox(
     #    "Max num of sentences in summary:", ('1', '2', '3', '4', '5', '6', '7'), index=4)
@@ -201,24 +204,25 @@ user_input = st.text_area(
 # user_summary_input = st.text_area(
 #    "Summary: ", value="", key="user_summary_input")
 
-
 # text_category = st.selectbox(
 #    "Text category: ", CATEGORIES, index=0, key="user_category_list")
 
+# Summarizer
 if st.button("Summarize"):
     # handle user input
     user_input.strip()
-    if user_input or text_category != "Select":
-        if text_category == "Select":
-            text_category = ""
+    if user_input:
 
-        llm = llm_langchain.chat_open_ai(temperature=0)
+        pb = SummaryPromptBuilder()
 
-        num_tokens = llm.get_num_tokens(user_input)
-        print(f"Text has {num_tokens} tokens")
+        llm = llm_chat.chat_open_ai(temperature=0)
+
+        if debug:
+            num_tokens = llm.get_num_tokens(user_input)
+            print(f"Text has {num_tokens} tokens")
 
         pb.set_vars(
-            text=user_input, text_category=text_category,
+            text=user_input,
             # max_sentences=int(max_sentences),
             # max_chars=max_chars,
             output_language=output_language)
@@ -240,7 +244,7 @@ if st.button("Summarize"):
             # "max_sentences",
             # "max_chars"])
 
-            # human_prompt = llm_langchain.prompt_from_template(
+            # human_prompt = llm_chat.prompt_from_template(
             #    template=human_template,
             #    input_variables=["text", "max_sentences", "max_chars"])
 
@@ -250,18 +254,15 @@ if st.button("Summarize"):
             # num_human_tokens = llm.get_num_tokens(human_prompt)
             # print(f"human prompt has {num_human_tokens} tokens")
 
-            # st.session_state.messages.append(llm_langchain.human_message(content=user_input))
-
-            # human_message_prompt = llm_langchain.human_message(human_template)
-
-            # texts = llm_langchain.docs_store.splitter.split_text(user_input)
+            # texts = llm_chat.docs_store.splitter.split_text(user_input)
             # docs = [Document(page_content=t) for t in texts[:3]]
 
             # Create Document objects for the user_input
             docs = docs_store.splitter.create_documents([user_input])
 
-            num_documents = len(docs)
-            print(f"Docs split up into {num_documents} documents")
+            if debug:
+                num_documents = len(docs)
+                print(f"Docs split up into {num_documents} documents")
 
             # summary_prompt = human_prompt.format(
             #    text=user_input,
@@ -269,7 +270,7 @@ if st.button("Summarize"):
             #    max_sentences=int(max_sentences), max_chars=max_chars
             # )
 
-            chain = llm_langchain.load_summarize_chain(prompt=human_prompt)
+            chain = llm_chat.load_summarize_chain(prompt=human_prompt)
 
             # chain = llm.chain(prompt=chat_prompt)
             output = chain.run(docs)
@@ -297,21 +298,22 @@ if st.button("Summarize"):
     else:
         st.write('Enter the text.')
 
+# Classificator
 if st.button("Classify"):
     # handle user input
     user_input.strip()
-    if user_input or text_category != "Select":
-        if text_category == "Select":
-            text_category = ""
+    if user_input:
 
-        llm = llm_langchain.chat_open_ai(
+        pb = ClassificationPromptBuilder()
+
+        llm = llm_chat.chat_open_ai(
             temperature=0)  # **OPENAI_COMPLETION_OPTIONS
 
         # num_tokens = llm.get_num_tokens(user_input)
         # print(f"Text has {num_tokens} tokens")
 
         pb.set_vars(
-            text=user_input, text_category=text_category,
+            text=user_input,
             # max_sentences=int(max_sentences), max_chars=max_chars,
             max_categories=int(max_categories),
             categories=list(CATEGORIES[1:]),
@@ -324,21 +326,21 @@ if st.button("Classify"):
 
         with st.spinner("Thinking..."):
 
-            system_message_prompt = llm_langchain.system_message_prompt_templay(
-                pb.get_system_classification_template())
+            system_message_prompt = llm_chat.system_message_prompt_templay(
+                pb.get_system_template())
 
-            human_template = pb.get_human_classification_template()
+            human_template = pb.get_human_template()
 
             if debug:
                 st.write(human_template)
 
-            human_message_prompt = llm_langchain.human_message_prompt_templay(
+            human_message_prompt = llm_chat.human_message_prompt_templay(
                 human_template)
 
-            chat_prompt = llm_langchain.chat_prompt_templay(
+            chat_prompt = llm_chat.chat_prompt_templay(
                 system_message_prompt, human_message_prompt)
 
-            # texts = llm_langchain.docs_store.splitter.split_text(user_input)
+            # texts = llm_chat.docs_store.splitter.split_text(user_input)
             # docs = [Document(page_content=t) for t in texts[:3]]
 
             # Create Document objects for the user_input
@@ -347,10 +349,10 @@ if st.button("Classify"):
             # num_documents = len(docs)
             # print(f"Docs split up into {num_documents} documents")
 
-            chain = llm_langchain.chain(prompt=chat_prompt)
+            chain = llm_chat.chain(prompt=chat_prompt)
 
             output = chain.run(
-                text=user_input, text_category=text_category,
+                text=user_input,
                 max_categories=max_categories,
                 categories=list(CATEGORIES[1:]),
                 # max_sentences=int(max_sentences), max_chars=max_chars,
@@ -406,13 +408,70 @@ if st.button("Classify"):
     else:
         st.write('Enter the text.')
 
-# handle user input
-# if user_input:
-#   st.session_state.messages.append(llm.human_message(content=user_input))
-#   with st.spinner("Generating..."):
-#       response = llm.chat_open_ai(st.session_state.messages)
-#   st.session_state.messages.append(
-#       llm.ai_message(content=response.content))
+# Rewriter
+if st.button("Rewrite"):
+    # handle user input
+    user_input.strip()
+    if user_input:
+
+        pb = RewriterPromptBuilder()
+
+        llm = llm_chat.chat_open_ai(temperature=0)
+
+        if debug:
+            num_tokens = llm.get_num_tokens(user_input)
+            print(f"Text has {num_tokens} tokens")
+
+        pb.set_vars(text=user_input,
+                    output_language=output_language)
+        # input_language="Russian", output_language="Russian")
+
+        st.session_state.messages = ["Rewrite" + " in " + model_name]
+
+        category_tag: str = ""
+
+        with st.spinner("Thinking..."):
+
+            system_message_prompt = llm_chat.system_message_prompt_templay(
+                pb.get_system_template())
+
+            human_template = pb.get_human_template()
+
+            if debug:
+                st.write(human_template)
+
+            human_message_prompt = llm_chat.human_message_prompt_templay(
+                human_template)
+
+            chat_prompt = llm_chat.chat_prompt_templay(
+                system_message_prompt, human_message_prompt)
+
+            chain = llm_chat.chain(prompt=chat_prompt)
+
+            output = chain.run(
+                text=user_input,
+                output_language=output_language)
+
+            if debug:
+                st.write(output)
+                # st.write(type(output))
+                if type(output) == str:
+                    print(output)
+
+            output = output.strip()
+
+            if debug:
+                st.write(output)
+                # st.write(type(output))
+                if type(output) == str:
+                    print(output)
+
+            # user_summary_input = output.strip()
+
+            st.session_state.messages.append(output)
+
+    else:
+        st.write('Enter the text.')
 
 # display message history
 messages = st.session_state.get('messages', [])
@@ -422,9 +481,3 @@ for i, msg in enumerate(messages):
         message(msg, is_user=True, key=str(i) + '_user')
     else:
         message(msg, is_user=False, key=str(i) + '_ai')
-
-    # for i, msg in enumerate(messages[1:]):
-    # if i % 2 == 0:
-    #     message(msg.content, is_user=True, key=str(i) + '_user')
-    # else:
-#     message(msg.content, is_user=False, key=str(i) + '_ai')
